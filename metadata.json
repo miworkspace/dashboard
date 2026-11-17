@@ -1,0 +1,6 @@
+{
+  "name": "Daily Amar Desh - IT Management System",
+  "description": "Enterprise IT infrastructure, inventory, network, IP address, VLAN, switch, and room management system for Daily Amar Desh.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

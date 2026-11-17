@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 
 import { apiRequest, getAuthUser } from "@/lib/api";
+import { AUTH_USER_UPDATED_EVENT } from "@/lib/useCurrentUser";
 import { startTokenExpiryTimer } from "@/lib/auth/session";
 
 const INITIAL_FORM = {
@@ -192,6 +193,9 @@ export default function ProfilePage() {
           JSON.stringify({ ...authUser, ...payload, id: userId }),
         );
       }
+
+      // Refresh the sidebar user card
+      window.dispatchEvent(new Event(AUTH_USER_UPDATED_EVENT));
 
       setMessage({
         type: "success",

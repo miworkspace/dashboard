@@ -9,6 +9,8 @@ import {
   Folder,
   FileText,
   RefreshCw,
+  ArrowUp,
+  ArrowDown,
 } from "lucide-react";
 
 import { apiRequest } from "@/lib/api";
@@ -20,7 +22,6 @@ const initialForm = {
   icon: "circle",
   type: "page",
   parent: "",
-  order: 0,
   actions: ["view"],
   isActive: true,
 };
@@ -36,8 +37,8 @@ function flattenMenus(menus = []) {
   return menus.flatMap((menu) => [menu, ...flattenMenus(menu.children || [])]);
 }
 
-function MenuTree({ menus, onEdit, onDelete, depth = 0 }) {
-  return menus.map((menu) => (
+function MenuTree({ menus, onEdit, onDelete, onMove, movingId, depth = 0 }) {
+  return menus.map((menu, index) => (
     <div key={menu._id}>
       <div
         className="flex flex-wrap items-center justify-between gap-3 border-b border-gray-100 px-4 py-3 dark:border-gray-800"
@@ -72,6 +73,32 @@ function MenuTree({ menus, onEdit, onDelete, depth = 0 }) {
         </div>
 
         <div className="flex items-center gap-2">
+          <div className="flex items-center rounded-lg border border-gray-200 dark:border-gray-700">
+            <button
+              type="button"
+              onClick={() => onMove(menu, "up")}
+              disabled={index === 0 || Boolean(movingId)}
+              className="cursor-pointer rounded-l-lg p-2 text-gray-600 hover:bg-orange-50 hover:text-orange-600 disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-gray-600 dark:text-gray-300"
+              title="Move up"
+              aria-label={`Move ${menu.name} up`}
+            >
+              <ArrowUp size={16} />
+            </button>
+            <span className="min-w-7 border-x border-gray-200 px-1 text-center font-mono text-xs text-gray-500 tabular-nums dark:border-gray-700">
+              {index + 1}
+            </span>
+            <button
+              type="button"
+              onClick={() => onMove(menu, "down")}
+              disabled={index === menus.length - 1 || Boolean(movingId)}
+              className="cursor-pointer rounded-r-lg p-2 text-gray-600 hover:bg-orange-50 hover:text-orange-600 disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-gray-600 dark:text-gray-300"
+              title="Move down"
+              aria-label={`Move ${menu.name} down`}
+            >
+              <ArrowDown size={16} />
+            </button>
+          </div>
+
           <button
             type="button"
             onClick={() => onEdit(menu)}
@@ -97,6 +124,8 @@ function MenuTree({ menus, onEdit, onDelete, depth = 0 }) {
           menus={menu.children}
           onEdit={onEdit}
           onDelete={onDelete}
+          onMove={onMove}
+          movingId={movingId}
           depth={depth + 1}
         />
       )}
@@ -112,15 +141,17 @@ export default function MenuManagementPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const [movingId, setMovingId] = useState(null);
   const allMenus = flattenMenus(menus);
 
   const parentMenus = allMenus.filter(
     (menu) => menu.type === "group" && menu._id !== editingId,
   );
 
-  async function loadMenus() {
+  // silent = true keeps the list on screen (used after reordering).
+  async function loadMenus(silent = false) {
     try {
-      setLoading(true);
+      if (!silent) setLoading(true);
       setError("");
 
       const data = await apiRequest("/rbac/menus");
@@ -130,6 +161,26 @@ export default function MenuManagementPage() {
       setError(err.message || "Failed to load menus.");
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function handleMove(menu, direction) {
+    setMovingId(menu._id);
+    setError("");
+    setSuccess("");
+
+    try {
+      await apiRequest(`/rbac/menus/${menu._id}/move`, {
+        method: "PATCH",
+        body: { direction },
+      });
+
+      await loadMenus(true);
+      window.dispatchEvent(new Event("rbac:menus-updated"));
+    } catch (err) {
+      setError(err.message || "Failed to change menu order.");
+    } finally {
+      setMovingId(null);
     }
   }
 
@@ -186,7 +237,6 @@ export default function MenuManagementPage() {
       icon: menu.icon || "circle",
       type: menu.type || "page",
       parent: menu.parent?._id || menu.parent || "",
-      order: menu.order ?? 0,
       actions: menu.actions || ["view"],
       isActive: menu.isActive ?? true,
     });
@@ -208,12 +258,12 @@ export default function MenuManagementPage() {
     setSuccess("");
 
     try {
+      // Order is managed with the up/down buttons; new menus go to the end.
       const payload = {
         ...form,
         path: form.type === "page" ? form.path : null,
         parent: form.type === "page" ? form.parent || null : null,
         actions: form.type === "page" ? form.actions : ["view"],
-        order: Number(form.order) || 0,
       };
 
       if (editingId) {
@@ -221,20 +271,20 @@ export default function MenuManagementPage() {
           method: "PATCH",
           body: payload,
         });
-
-        setSuccess("Menu updated successfully.");
-        window.dispatchEvent(new Event("rbac:menus-updated"));
       } else {
         await apiRequest("/rbac/menus", {
           method: "POST",
           body: payload,
         });
-
-        setSuccess("Menu created successfully.");
       }
 
+      // resetForm() clears messages, so set the success text afterwards.
       resetForm();
-      await loadMenus();
+      setSuccess(
+        editingId ? "Menu updated successfully." : "Menu created successfully.",
+      );
+      window.dispatchEvent(new Event("rbac:menus-updated"));
+      await loadMenus(true);
     } catch (err) {
       setError(err.message || "Something went wrong.");
     } finally {
@@ -281,7 +331,7 @@ export default function MenuManagementPage() {
 
         <button
           type="button"
-          onClick={loadMenus}
+          onClick={() => loadMenus()}
           className="flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-800"
         >
           <RefreshCw size={16} />
@@ -417,19 +467,12 @@ export default function MenuManagementPage() {
               className="w-full rounded-lg border px-3 py-2 dark:border-gray-700 dark:bg-gray-800"
             />
           </div>
-
-          <div>
-            <label className="mb-1 block text-sm font-medium">
-              Display Order
-            </label>
-            <input
-              type="number"
-              value={form.order}
-              onChange={(e) => updateField("order", e.target.value)}
-              className="w-full rounded-lg border px-3 py-2 dark:border-gray-700 dark:bg-gray-800"
-            />
-          </div>
         </div>
+
+        <p className="text-xs text-gray-500">
+          New menus are added at the end of their level. Use the up/down arrows
+          in the list below to change the display order.
+        </p>
 
         {form.type === "page" && (
           <div>
@@ -496,7 +539,13 @@ export default function MenuManagementPage() {
         ) : menus.length === 0 ? (
           <p className="p-5 text-sm text-gray-500">No menus found.</p>
         ) : (
-          <MenuTree menus={menus} onEdit={handleEdit} onDelete={handleDelete} />
+          <MenuTree
+            menus={menus}
+            onEdit={handleEdit}
+            onDelete={handleDelete}
+            onMove={handleMove}
+            movingId={movingId}
+          />
         )}
       </div>
     </div>

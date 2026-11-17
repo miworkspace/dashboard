@@ -16,7 +16,7 @@ import { useToast } from "@/lib/toastContext";
 const BlogEditor = dynamic(() => import("./BlogEditor"), {
   ssr: false,
   loading: () => (
-    <div className="flex min-h-[460px] items-center justify-center rounded-xl border border-slate-200 text-sm text-slate-400">
+    <div className="flex min-h-115 items-center justify-center rounded-xl border border-slate-200 text-sm text-slate-400">
       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
       Loading editor...
     </div>

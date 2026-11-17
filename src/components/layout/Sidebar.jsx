@@ -30,6 +30,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { apiRequest, getSidebarMenus } from "../../lib/api";
+import { useCurrentUser } from "../../lib/useCurrentUser";
 
 // Map Backend icon names to Lucide components
 const ICONS = {
@@ -50,9 +51,63 @@ const ICONS = {
   "chart-no-axes-combined": ChartNoAxesCombined,
 };
 
+const ROLE_LABELS = {
+  admin: "Super Admin",
+  manager: "Manager",
+};
+
+function getInitials(name = "") {
+  return (
+    name
+      .trim()
+      .split(/\s+/)
+      .slice(0, 2)
+      .map((part) => part[0] || "")
+      .join("")
+      .toUpperCase() || "U"
+  );
+}
+
+// "IT Engineer, IT Department" → falls back to the role name
+function userSubtitle(user) {
+  const parts = [user.designation, user.department].filter(Boolean);
+  if (parts.length > 0) return parts.join(", ");
+
+  return (
+    ROLE_LABELS[user.role] ||
+    (user.role ? user.role.charAt(0).toUpperCase() + user.role.slice(1) : "")
+  );
+}
+
+function UserAvatar({ user }) {
+  const [imageFailed, setImageFailed] = useState(false);
+
+  if (user.image && !imageFailed) {
+    return (
+      // User-uploaded remote image; plain img avoids Next image host config
+      <img
+        src={user.image}
+        alt={`${user.name || "User"} profile`}
+        onError={() => setImageFailed(true)}
+        className="h-9 w-9 shrink-0 rounded-full border border-slate-600 object-cover"
+      />
+    );
+  }
+
+  return (
+    <div
+      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-orange-500 text-xs font-bold text-white"
+      aria-hidden="true"
+    >
+      {getInitials(user.name)}
+    </div>
+  );
+}
+
 export function Sidebar({ mobileOpen, onCloseMobile }) {
   const pathname = usePathname() || "/";
   const router = useRouter();
+  const currentUser = useCurrentUser();
   const [menus, setMenus] = useState([]);
   const [menuLoading, setMenuLoading] = useState(true);
   const [expandedMenus, setExpandedMenus] = useState({});
@@ -327,27 +382,49 @@ export function Sidebar({ mobileOpen, onCloseMobile }) {
 
       {/* User Profile & Footer */}
       <div className="p-3 border-t border-slate-800/80 bg-slate-950/30">
-        <div className="flex items-center justify-between p-2 rounded-lg bg-slate-800/50">
-          <div className="flex items-center gap-2.5 min-w-0">
-            <div className="w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center text-xs font-bold text-white shrink-0">
-              MI
-            </div>
+        <div className="flex items-center justify-between gap-2 p-2 rounded-lg bg-slate-800/50">
+          {currentUser ? (
+            <Link
+              href="/dashboard/profile"
+              onClick={onCloseMobile}
+              title="View profile"
+              className="flex min-w-0 flex-1 items-center gap-2.5 rounded-md transition hover:opacity-90"
+            >
+              <UserAvatar key={currentUser.image || "none"} user={currentUser} />
 
-            <div className="min-w-0">
-              <p className="text-xs font-semibold text-white truncate">
-                Mohyminul Islam
-              </p>
+              <div className="min-w-0">
+                <p className="text-xs font-semibold text-white truncate">
+                  {currentUser.name || "User"}
+                </p>
 
-              <p className="text-[10px] text-slate-400 truncate">
-                IT Engineer, Daily Amar Desh
-              </p>
+                <p className="text-[10px] text-slate-400 truncate">
+                  {userSubtitle(currentUser)}
+                </p>
+
+                {currentUser.email && (
+                  <p className="text-[10px] text-slate-500 truncate">
+                    {currentUser.email}
+                  </p>
+                )}
+              </div>
+            </Link>
+          ) : (
+            // Skeleton while the user loads
+            <div className="flex min-w-0 flex-1 items-center gap-2.5">
+              <div className="h-9 w-9 shrink-0 animate-pulse rounded-full bg-slate-700" />
+              <div className="flex-1 space-y-1.5">
+                <div className="h-2.5 w-24 animate-pulse rounded bg-slate-700" />
+                <div className="h-2 w-16 animate-pulse rounded bg-slate-700" />
+              </div>
             </div>
-          </div>
+          )}
 
           <button
             type="button"
             onClick={handleLogout}
-            className="cursor-pointer rounded-lg border border-red-500/30 bg-red-500/10 p-2 text-sm font-medium text-red-400 transition hover:bg-red-500 hover:text-white"
+            title="Logout"
+            aria-label="Logout"
+            className="shrink-0 cursor-pointer rounded-lg border border-red-500/30 bg-red-500/10 p-2 text-sm font-medium text-red-400 transition hover:bg-red-500 hover:text-white"
           >
             <LogOut size={16} />
           </button>

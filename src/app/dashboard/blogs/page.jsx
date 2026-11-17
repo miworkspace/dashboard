@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import {
@@ -16,12 +16,11 @@ import {
 } from "lucide-react";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { deleteBlog, getBlogs } from "@/lib/api/blogs";
-import { hasPermission } from "@/lib/api";
 import { useToast } from "@/lib/toastContext";
 
 const PAGE_SIZE = 12;
 
-const subscribeNoop = () => () => {};
+const NO_PERMISSIONS = { create: false, edit: false, delete: false };
 
 const FILTERS = [
   { value: "", label: "All" },
@@ -67,6 +66,7 @@ export default function AllBlogsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [deletingId, setDeletingId] = useState(null);
+  const [permissions, setPermissions] = useState(NO_PERMISSIONS);
 
   const fetchBlogs = useCallback(async () => {
     setLoading(true);
@@ -77,6 +77,7 @@ export default function AllBlogsPage() {
       setBlogs(data.blogs || []);
       setStats(data.stats || { total: 0, published: 0, draft: 0 });
       setPagination(data.pagination || { page: 1, totalPages: 1 });
+      setPermissions({ ...NO_PERMISSIONS, ...data.permissions });
     } catch (err) {
       setError(err.message || "Failed to load blogs.");
     } finally {
@@ -88,12 +89,10 @@ export default function AllBlogsPage() {
     fetchBlogs();
   }, [fetchBlogs]);
 
-  // Permissions come from sessionStorage, which only exists in the browser.
-  // isClient is false during server render/hydration → no mismatch.
-  const isClient = useSyncExternalStore(subscribeNoop, () => true, () => false);
-  const canCreate = isClient && hasPermission("blogs", "create");
-  const canEdit = isClient && hasPermission("blogs", "edit");
-  const canDelete = isClient && hasPermission("blogs", "delete");
+  // Permissions come from the API (the server is the source of truth)
+  const canCreate = permissions.create;
+  const canEdit = permissions.edit;
+  const canDelete = permissions.delete;
 
   const changeFilter = (value) => {
     setStatus(value);
@@ -183,7 +182,7 @@ export default function AllBlogsPage() {
       </div>
 
       {loading && (
-        <div className="flex min-h-[400px] items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-500">
+        <div className="flex min-h-100 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-500">
           <Loader2 className="mr-2 h-5 w-5 animate-spin text-orange-500" />
           Loading blogs...
         </div>
@@ -207,7 +206,7 @@ export default function AllBlogsPage() {
       )}
 
       {!loading && !error && blogs.length === 0 && (
-        <div className="flex min-h-[360px] flex-col items-center justify-center rounded-2xl border border-dashed border-slate-300 bg-white px-6 text-center">
+        <div className="flex min-h-90 flex-col items-center justify-center rounded-2xl border border-dashed border-slate-300 bg-white px-6 text-center">
           <div className="flex h-14 w-14 items-center justify-center rounded-full bg-orange-50">
             <FileText className="h-6 w-6 text-orange-500" />
           </div>

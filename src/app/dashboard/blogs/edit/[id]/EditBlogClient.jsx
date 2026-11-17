@@ -55,7 +55,7 @@ export default function EditBlogClient({ id }) {
       />
 
       {state.loading && (
-        <div className="flex min-h-[400px] items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-500">
+        <div className="flex min-h-100 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-500">
           <Loader2 className="mr-2 h-5 w-5 animate-spin text-orange-500" />
           Loading blog...
         </div>

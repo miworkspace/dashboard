@@ -9,7 +9,9 @@
     "start": "next start --hostname 0.0.0.0 --port 3000"
   },
   "dependencies": {
+    "@ckeditor/ckeditor5-react": "^12.0.0",
     "@google/genai": "^2.4.0",
+    "ckeditor5": "^49.1.0",
     "dotenv": "^17.2.3",
     "express": "^4.21.2",
     "lucide-react": "^0.546.0",

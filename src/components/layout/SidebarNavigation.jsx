@@ -9,6 +9,7 @@ import {
   ChartNoAxesCombined,
   ChevronDown,
   Circle,
+  FileText,
   FolderKanban,
   GitBranch,
   LayoutDashboard,
@@ -45,6 +46,7 @@ const ICONS = {
   "chart-no-axes-combined": ChartNoAxesCombined,
   printer: Printer,
   server: Server,
+  "file-text": FileText,
 };
 
 function MenuItems({ menus, pathname, onNavigate }) {

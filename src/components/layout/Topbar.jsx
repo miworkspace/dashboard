@@ -85,6 +85,15 @@ export function Topbar({ onOpenMobile }) {
         </div>
 
         {/* Right: Actions */}
+        <div>
+          <button
+            type="button"
+            onClick={handleLogout}
+            className="cursor-pointer rounded-lg border border-red-500/30 bg-red-500/10 p-2 text-sm font-medium text-red-400 transition hover:bg-red-500 hover:text-white"
+          >
+            <LogOut size={16} />
+          </button>
+        </div>
       </header>
     </>
   );
